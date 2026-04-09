@@ -14,7 +14,13 @@ import { ensureContainerRuntimeRunning, cleanupOrphans } from './container-runti
 import { startActiveDeliveryPoll, startSweepDeliveryPoll, setDeliveryAdapter, stopDeliveryPolls } from './delivery.js';
 import { startHostSweep, stopHostSweep } from './host-sweep.js';
 import { routeInbound } from './router.js';
-import { getPendingQuestion, deletePendingQuestion, getPendingApproval, deletePendingApproval, getSession } from './db/sessions.js';
+import {
+  getPendingQuestion,
+  deletePendingQuestion,
+  getPendingApproval,
+  deletePendingApproval,
+  getSession,
+} from './db/sessions.js';
 import { getAgentGroup, updateAgentGroup } from './db/agent-groups.js';
 import { writeSessionMessage, writeSystemResponse } from './session-manager.js';
 import { wakeContainer, buildAgentGroupImage } from './container-runner.js';

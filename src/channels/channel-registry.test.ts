@@ -54,7 +54,11 @@ function createMockAdapter(
       return setupConfig !== null;
     },
 
-    async deliver(_platformId: string, _threadId: string | null, message: OutboundMessage): Promise<string | undefined> {
+    async deliver(
+      _platformId: string,
+      _threadId: string | null,
+      message: OutboundMessage,
+    ): Promise<string | undefined> {
       delivered.push(message);
       return undefined;
     },

@@ -12,11 +12,25 @@ import fs from 'fs';
 import path from 'path';
 
 import { GROUPS_DIR } from './config.js';
-import { getRunningSessions, getActiveSessions, createPendingQuestion, getSession, createPendingApproval } from './db/sessions.js';
+import {
+  getRunningSessions,
+  getActiveSessions,
+  createPendingQuestion,
+  getSession,
+  createPendingApproval,
+} from './db/sessions.js';
 import { getAgentGroup, getAdminAgentGroup, createAgentGroup, updateAgentGroup } from './db/agent-groups.js';
 import { getMessagingGroupsByAgentGroup } from './db/messaging-groups.js';
 import { log } from './log.js';
-import { openInboundDb, openOutboundDb, sessionDir, inboundDbPath, resolveSession, writeSessionMessage, writeSystemResponse } from './session-manager.js';
+import {
+  openInboundDb,
+  openOutboundDb,
+  sessionDir,
+  inboundDbPath,
+  resolveSession,
+  writeSessionMessage,
+  writeSystemResponse,
+} from './session-manager.js';
 import { resetContainerIdleTimer, wakeContainer } from './container-runner.js';
 import type { OutboundFile } from './channels/adapter.js';
 import type { Session } from './types.js';
@@ -321,7 +335,11 @@ async function routeAgentMessage(
     content: enrichedContent,
   });
 
-  log.info('Agent message routed', { from: sourceSession.agent_group_id, to: targetAgentGroupId, targetSession: targetSession.id });
+  log.info('Agent message routed', {
+    from: sourceSession.agent_group_id,
+    to: targetAgentGroupId,
+    targetSession: targetSession.id,
+  });
 
   const freshSession = getSession(targetSession.id);
   if (freshSession) {
@@ -419,7 +437,11 @@ async function handleSystemAction(
       const requestId = content.requestId as string;
       const name = content.name as string;
       let folder =
-        (content.folder as string) || name.toLowerCase().replace(/[^a-z0-9_-]/g, '_').replace(/_+/g, '_');
+        (content.folder as string) ||
+        name
+          .toLowerCase()
+          .replace(/[^a-z0-9_-]/g, '_')
+          .replace(/_+/g, '_');
       const instructions = content.instructions as string | null;
 
       try {
