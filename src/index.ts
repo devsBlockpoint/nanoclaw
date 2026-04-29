@@ -5,8 +5,11 @@
  * start delivery polls, start sweep, handle shutdown.
  */
 import path from 'path';
+import { writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 
 import { DATA_DIR } from './config.js';
+import { resolveSystemPrompt } from './system-prompt-loader.js';
 import { migrateGroupsToClaudeLocal } from './claude-md-compose.js';
 import { initDb } from './db/connection.js';
 import { runMigrations } from './db/migrations/index.js';
@@ -66,6 +69,31 @@ async function main(): Promise<void> {
 
   // 1b. One-time filesystem cutover — idempotent, no-op after first run.
   migrateGroupsToClaudeLocal();
+
+  // 1c. System prompt loader — runs after migrations, before channel adapters.
+  //     Resolves the prompt from env/file/url and writes it to
+  //     groups/monica/CLAUDE.local.md so the container picks it up on first wake.
+  const promptGroup = process.env.AGENT_GROUP ?? 'monica';
+  if (promptGroup === 'monica' || !process.env.AGENT_GROUP) {
+    const promptSource = (process.env.AGENT_SYSTEM_PROMPT_SOURCE ?? 'env') as 'env' | 'file' | 'url';
+    const cachePath = join(DATA_DIR, 'system-prompt.cache.md');
+    const groupClaudeMd = join('groups', promptGroup, 'CLAUDE.local.md');
+    try {
+      const prompt = await resolveSystemPrompt({
+        source: promptSource,
+        env: process.env.AGENT_SYSTEM_PROMPT,
+        path: process.env.AGENT_SYSTEM_PROMPT_PATH,
+        url: process.env.AGENT_SYSTEM_PROMPT_URL,
+        urlAuth: process.env.AGENT_SYSTEM_PROMPT_URL_AUTH,
+        cachePath,
+      });
+      await writeFile(groupClaudeMd, prompt, 'utf8');
+      log.info('[boot] system prompt loaded', { source: promptSource, chars: prompt.length });
+    } catch (err) {
+      log.fatal('[boot] system prompt resolution failed', { err });
+      process.exit(1);
+    }
+  }
 
   // 2. Container runtime
   ensureContainerRuntimeRunning();
