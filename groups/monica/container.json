@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "mcp-monica": {
-      "type": "sse",
+      "type": "http",
       "url": "${MCP_MONICA_URL}"
     }
   },
