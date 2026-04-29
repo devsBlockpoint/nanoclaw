@@ -2,7 +2,7 @@
   "mcpServers": {
     "mcp-monica": {
       "type": "sse",
-      "url": "http://mcp-monica:3000/mcp/sse"
+      "url": "${MCP_MONICA_URL}"
     }
   },
   "packages": {

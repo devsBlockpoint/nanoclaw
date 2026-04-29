@@ -415,9 +415,44 @@ function ensureRuntimeFields(
     containerConfig.assistantName = agentGroup.name;
     dirty = true;
   }
+  // Env var substitution in MCP server URLs (and headers values).
+  // Lets container.json use placeholders like "${MCP_MONICA_URL}" so the
+  // same template works in dev (local Docker network DNS) and cloud
+  // (public Easypanel/etc. domain). Substitutes only when the env var is
+  // set; otherwise leaves the placeholder so misconfigurations are visible.
+  for (const server of Object.values(containerConfig.mcpServers)) {
+    if ('url' in server && typeof server.url === 'string') {
+      const expanded = expandEnvVars(server.url);
+      if (expanded !== server.url) {
+        server.url = expanded;
+        dirty = true;
+      }
+    }
+    if ('headers' in server && server.headers && typeof server.headers === 'object') {
+      for (const [hKey, hValue] of Object.entries(server.headers)) {
+        if (typeof hValue === 'string') {
+          const expanded = expandEnvVars(hValue);
+          if (expanded !== hValue) {
+            server.headers[hKey] = expanded;
+            dirty = true;
+          }
+        }
+      }
+    }
+  }
   if (dirty) {
     writeContainerConfig(agentGroup.folder, containerConfig);
   }
+}
+
+/** Replace ${VAR} placeholders with `process.env[VAR]`. Leaves the
+ * placeholder intact when the env var is unset so misconfigurations
+ * surface visibly instead of silently producing empty URLs. */
+function expandEnvVars(input: string): string {
+  return input.replace(/\$\{([A-Z_][A-Z0-9_]*)\}/g, (match, varName: string) => {
+    const value = process.env[varName];
+    return value !== undefined && value !== '' ? value : match;
+  });
 }
 
 async function buildContainerArgs(
