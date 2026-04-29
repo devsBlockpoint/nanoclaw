@@ -41,25 +41,26 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 RUN pnpm install --frozen-lockfile --prod --ignore-scripts \
   && pnpm rebuild better-sqlite3
 
-# ---------- Stage 4: runtime (Rootless DinD — no privileged needed) ---------
-# Base = docker:24-dind-rootless which provides dockerd + rootlesskit +
-# slirp4netns + fuse-overlayfs and runs as non-root user (uid 1000).
-# Designed specifically for environments where --privileged is unavailable
-# (e.g., Easypanel, Kubernetes without privileged pod).
+# ---------- Stage 4: runtime (Rootful DinD — requires privileged) -----------
+# Base = docker:24-dind which provides dockerd + docker CLI + alpine OS.
+# We install Node 20 + pnpm + tsx on top.
 #
-# Requirements on the host (most modern Linux kernels satisfy these):
-#   - kernel.unprivileged_userns_clone = 1
-#   - /dev/fuse accessible
-#   - Seccomp not blocking clone(NEWUSER)
+# This image runs an internal Docker daemon (via dind-entrypoint.sh) so that
+# bind mounts the nanoclaw host process performs (workspace/, group folders,
+# session DBs in /app/data) all reference paths INSIDE this container — they
+# work because dockerd lives in the same filesystem namespace.
 #
-# If those are missing, fall back to a VM with native Docker.
-FROM docker:24-dind-rootless AS runtime
-
-# Switch to root briefly to install Node + tooling + copy app files
-USER root
+# Requires the container to be started with --privileged. On Easypanel, set
+# the service to run with `privileged: true` in the Compose YAML.
+FROM docker:24-dind AS runtime
 WORKDIR /app
 
+# Node 20 + tini + curl. docker:24-dind already brings docker CLI + dockerd.
 RUN apk add --no-cache nodejs npm tini curl
+
+# pnpm + tsx (needed for running scripts/*.ts inside the container).
+# docker:24-dind's apk-installed nodejs doesn't ship corepack, so we install
+# pnpm via npm directly.
 RUN npm install -g pnpm@10.33.0 tsx@4.19.0
 
 COPY --from=prod-deps /app/node_modules ./node_modules
@@ -70,26 +71,19 @@ COPY groups/monica ./groups/monica
 COPY src ./src
 COPY tsconfig.json ./
 
-# Make /app writable by rootless user (uid 1000 in this image)
-RUN mkdir -p /app/data && chown -R rootless:rootless /app
-
-RUN chmod +x /app/scripts/dind-rootless-cmd.sh
+# DinD entrypoint that starts dockerd, waits, optionally pre-pulls, then execs CMD
+RUN chmod +x /app/scripts/dind-entrypoint.sh
 
 VOLUME ["/app/data"]
 EXPOSE 3001
 
 ENV NODE_ENV=production
 ENV NANOCLAW_PORT=3001
+# Tells container-runner to skip dev-time bind mounts of /app/src and /app/skills
 ENV NANOCLAW_AGENT_SRC_BAKED=true
 
-# Drop back to rootless user (uid 1000) for runtime
-USER rootless
-
-HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
   CMD curl -fsS "http://localhost:${NANOCLAW_PORT:-3001}/health" >/dev/null || exit 1
 
-# Upstream entrypoint (dockerd-entrypoint.sh) starts dockerd-rootless in
-# background and execs CMD. Our CMD wrapper waits for the socket, sets
-# DOCKER_HOST, optionally pre-pulls, then runs nanoclaw.
-ENTRYPOINT ["dockerd-entrypoint.sh"]
-CMD ["/app/scripts/dind-rootless-cmd.sh", "node", "/app/dist/index.js"]
+ENTRYPOINT ["/sbin/tini", "--", "/app/scripts/dind-entrypoint.sh"]
+CMD ["node", "dist/index.js"]
