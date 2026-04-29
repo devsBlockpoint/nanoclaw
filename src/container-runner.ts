@@ -482,10 +482,18 @@ async function buildContainerArgs(
   // Host gateway
   args.push(...hostGatewayArgs());
 
-  // User mapping
+  // User mapping — make the agent container run as the same UID as the host
+  // process so that bind-mounted /workspace/{inbound.db,outbound.db} files
+  // (owned by the host's UID) are writable by the agent. SQLite needs RW
+  // even for "read" operations because of the journal/WAL files.
+  //
+  // Upstream skipped this for hostUid 0 (root) and 1000 (node) because in
+  // their VM setups the host runs as a non-root user matching the agent's
+  // baked-in `node` uid. In cloud DinD setups the host commonly runs as root,
+  // so we now pass --user 0 too.
   const hostUid = process.getuid?.();
   const hostGid = process.getgid?.();
-  if (hostUid != null && hostUid !== 0 && hostUid !== 1000) {
+  if (hostUid != null && hostUid !== 1000) {
     args.push('--user', `${hostUid}:${hostGid}`);
     args.push('-e', 'HOME=/home/node');
   }
