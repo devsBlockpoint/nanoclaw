@@ -13,6 +13,10 @@ logs/
 
 # Groups - per-installation state, not tracked
 groups/*
+# Exception: monica is the fork's bundled agent group (committed skeleton + runtime overlay)
+!groups/monica/
+groups/monica/CLAUDE.local.md
+groups/monica/.runtime/
 
 # Composer-managed CLAUDE.md artifacts (regenerated every spawn) and
 # per-group memory (CLAUDE.local.md) must never be committed.

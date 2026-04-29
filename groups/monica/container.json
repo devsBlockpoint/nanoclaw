@@ -1,0 +1,13 @@
+{
+  "provider": "claude",
+  "assistantName": "Mónica",
+  "groupName": "monica",
+  "agentGroupId": "REPLACED_AT_RUNTIME",
+  "maxMessagesPerPrompt": 10,
+  "mcpServers": {
+    "mcp-monica": {
+      "type": "sse",
+      "url": "http://mcp-monica:3000/mcp/sse"
+    }
+  }
+}
