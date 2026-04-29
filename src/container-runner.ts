@@ -450,6 +450,27 @@ async function buildContainerArgs(
     log.warn('OneCLI gateway error — container will have no credentials', { containerName, err });
   }
 
+  // Anthropic credential passthrough — bypass OneCLI when we are running on a
+  // PaaS where OneCLI is not configured (e.g., Easypanel without a vault).
+  // Forwards the host's Anthropic credentials directly to the per-session
+  // container as `-e` flags. If a value is unset on the host, it is skipped.
+  // SECURITY: the credential ends up in the container env (visible to anything
+  // running inside). Acceptable for single-tenant ÉLEVÉ-style deployments
+  // where the per-session container is short-lived and isolated. For
+  // multi-tenant production prefer OneCLI.
+  const ANTHROPIC_PASSTHROUGH = [
+    'CLAUDE_CODE_OAUTH_TOKEN',
+    'ANTHROPIC_API_KEY',
+    'ANTHROPIC_AUTH_TOKEN',
+    'ANTHROPIC_BASE_URL',
+  ] as const;
+  for (const key of ANTHROPIC_PASSTHROUGH) {
+    const value = process.env[key];
+    if (value) {
+      args.push('-e', `${key}=${value}`);
+    }
+  }
+
   // Host gateway
   args.push(...hostGatewayArgs());
 
