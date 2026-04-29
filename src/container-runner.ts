@@ -299,13 +299,21 @@ function buildMounts(
   mounts.push({ hostPath: claudeDir, containerPath: '/home/node/.claude', readonly: false });
 
   // Shared agent-runner source — read-only, same code for all groups.
-  const agentRunnerSrc = path.join(projectRoot, 'container', 'agent-runner', 'src');
-  mounts.push({ hostPath: agentRunnerSrc, containerPath: '/app/src', readonly: true });
+  // In cloud / Docker-out-of-Docker setups (Easypanel), bind mounts use the
+  // OUTER host's filesystem (the host running the Docker daemon), not the
+  // nanoclaw-host container's. Since the agent-runner src lives inside the
+  // nanoclaw-host container, the bind would mount an empty/missing path
+  // and override the baked-in src. Set NANOCLAW_AGENT_SRC_BAKED=true to
+  // skip these dev-only bind mounts and rely on src baked into the agent
+  // image at build time (see container/Dockerfile).
+  if (process.env.NANOCLAW_AGENT_SRC_BAKED !== 'true') {
+    const agentRunnerSrc = path.join(projectRoot, 'container', 'agent-runner', 'src');
+    mounts.push({ hostPath: agentRunnerSrc, containerPath: '/app/src', readonly: true });
 
-  // Shared skills — read-only, symlinks in .claude-shared/skills/ point here.
-  const skillsSrc = path.join(projectRoot, 'container', 'skills');
-  if (fs.existsSync(skillsSrc)) {
-    mounts.push({ hostPath: skillsSrc, containerPath: '/app/skills', readonly: true });
+    const skillsSrc = path.join(projectRoot, 'container', 'skills');
+    if (fs.existsSync(skillsSrc)) {
+      mounts.push({ hostPath: skillsSrc, containerPath: '/app/skills', readonly: true });
+    }
   }
 
   // Additional mounts from container config

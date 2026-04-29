@@ -80,6 +80,17 @@ COPY agent-runner/package.json agent-runner/bun.lock ./
 RUN --mount=type=cache,target=/root/.bun/install/cache \
     bun install --frozen-lockfile
 
+# ---- agent-runner source + skills (baked for cloud deploy) -------------------
+# Upstream design: source and skills are bind-mounted at runtime (host edits
+# hot-reload). For Easypanel/cloud (Docker-out-of-Docker via socket mount)
+# bind-mount paths refer to the Easypanel HOST filesystem, not the
+# nanoclaw-host container, so bind-mounting them is impractical. We bake them
+# into the image instead. Set NANOCLAW_AGENT_SRC_BAKED=true on the host so
+# container-runner.ts skips the bind mounts. Source-only changes therefore
+# require an agent image rebuild + push for prod.
+COPY agent-runner/src /app/src
+COPY skills /app/skills
+
 # ---- pnpm + global Node CLIs -------------------------------------------------
 # Most stable first, most frequently bumped last. Bumping claude-code
 # (the most common change) only invalidates one layer.
