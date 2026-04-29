@@ -1,5 +1,7 @@
-# Mónica — placeholder
-
-Este archivo se sobreescribe en runtime por `src/system-prompt-loader.ts` antes de cada wake del container, según la fuente configurada en `AGENT_SYSTEM_PROMPT_SOURCE` (env/file/url).
-
-Si ves este texto en un container vivo, el loader no corrió o falló sin cache de fallback. Revisar logs del host: `logs/nanoclaw.log` busca `[system-prompt-loader]`.
+<!-- Composed at spawn — do not edit. Edit CLAUDE.local.md for per-group content. -->
+@./.claude-shared.md
+@./.claude-fragments/module-agents.md
+@./.claude-fragments/module-core.md
+@./.claude-fragments/module-interactive.md
+@./.claude-fragments/module-scheduling.md
+@./.claude-fragments/module-self-mod.md

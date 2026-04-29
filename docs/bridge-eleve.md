@@ -119,12 +119,21 @@ Sin esto, el container booteará pero las llamadas a Anthropic devolverán `401 
 
 ## Verified
 
-Smoke test local 2026-04-29:
-- nanoclaw host con eleve-http adapter en :3011.
-- `GET /health` → 200.
-- `POST /messages` sin auth → 401.
-- `POST /messages` con bearer → 202.
-- system-prompt-loader cargó prompt de env (12 chars).
-- Adapter co-existe con CLI channel upstream sin conflictos.
+Smoke E2E local 2026-04-29 (nanoclaw host + mcp-monica:dev container + mock outbound):
 
-E2E full (con agente respondiendo) requiere OneCLI + Anthropic key configurados.
+- ✅ `GET /health` → 200.
+- ✅ `POST /messages` sin auth → 401; con bearer → 202 + body `{"status":"accepted"}`.
+- ✅ system-prompt-loader carga prompt desde env y lo escribe a `groups/monica/CLAUDE.local.md`.
+- ✅ Auto-wiring: la primera llamada con un `conversation_id` nuevo crea `messaging_group` (`channel_type=eleve-http`, `unknown_sender_policy=public`) y lo wirea al agent group `monica`.
+- ✅ Session created por router, `agentGroupName="Mónica"` (acento preservado).
+- ✅ Message routed con `engage_mode=pattern, sender_scope=all`.
+- ✅ Container spawn dispara correctamente (intent verificado por logs).
+- ⏸️ Container exit code 125 por OneCLI 401 — esperado sin OneCLI auth real. El último tramo de la cadena (Anthropic → MCP → outbound) requiere setup de secrets que vive en Plan 4 / Easypanel.
+
+## Gotcha: `unknown_sender_policy = 'public'`
+
+El adapter setea `unknown_sender_policy: 'public'` al crear el messaging_group. Razón: cada conversación de WhatsApp viene de un `phone:<num>` que NO está en la base de usuarios; con `'strict'` (default upstream) cada mensaje cae con `MESSAGE DROPPED — unknown sender`. En `eleve-http` la auth real la da el bearer `AGENT_INBOUND_TOKEN` en el boundary; sender-level gating no es apropiado para este canal.
+
+## Runtime files en `groups/monica/`
+
+`groups/monica/CLAUDE.md` y `groups/monica/container.json` son **regenerados por el composer del host en cada spawn** del container. Los archivos commiteados son la base que el host completa con `agentGroupId`, `groupName` y fragments de skills. La fuente de verdad del prompt vive en `CLAUDE.local.md` (gitignored, escrito por el system-prompt-loader).

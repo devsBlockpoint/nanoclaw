@@ -1,13 +1,19 @@
 {
-  "provider": "claude",
-  "assistantName": "Mónica",
-  "groupName": "monica",
-  "agentGroupId": "REPLACED_AT_RUNTIME",
-  "maxMessagesPerPrompt": 10,
   "mcpServers": {
     "mcp-monica": {
       "type": "sse",
       "url": "http://mcp-monica:3000/mcp/sse"
     }
-  }
+  },
+  "packages": {
+    "apt": [],
+    "npm": []
+  },
+  "additionalMounts": [],
+  "skills": "all",
+  "provider": "claude",
+  "groupName": "Mónica",
+  "assistantName": "Mónica",
+  "agentGroupId": "ag-1777474767725-ki4miv",
+  "maxMessagesPerPrompt": 10
 }

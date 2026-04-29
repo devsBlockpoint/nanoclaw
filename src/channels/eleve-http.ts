@@ -257,7 +257,11 @@ async function ensureMessagingGroupWired(conversationId: string): Promise<void> 
       platform_id: conversationId,
       name: null,
       is_group: 0,
-      unknown_sender_policy: 'strict',
+      // Public: ÉLEVÉ trusts the upstream Supabase webhook; every WhatsApp sender
+      // is unknown by definition (new patient = new phone). The bearer at the
+      // adapter boundary is what authenticates inbound; sender-level gating is
+      // not appropriate for this channel.
+      unknown_sender_policy: 'public',
       created_at: now,
     });
     // Refresh after creation
