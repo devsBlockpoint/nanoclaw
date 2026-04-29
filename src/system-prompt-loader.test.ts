@@ -35,9 +35,7 @@ describe('resolveSystemPrompt', () => {
 
   test('source=url fetches and writes to cache on success', async () => {
     const cachePath = join(tmpDir, 'cache.md');
-    const fetchImpl = vi.fn(async () =>
-      new Response('PROMPT FROM URL', { status: 200 }),
-    ) as typeof fetch;
+    const fetchImpl = vi.fn(async () => new Response('PROMPT FROM URL', { status: 200 })) as typeof fetch;
     const out = await resolveSystemPrompt({
       source: 'url',
       url: 'https://example.com/prompt',

@@ -88,11 +88,7 @@ export function createEleveHttpAdapter(config: EleveHttpConfig): ChannelAdapter 
       return server !== null;
     },
 
-    async deliver(
-      platformId: string,
-      _threadId: string | null,
-      message: OutboundMessage,
-    ): Promise<string | undefined> {
+    async deliver(platformId: string, _threadId: string | null, message: OutboundMessage): Promise<string | undefined> {
       if (!config.outboundUrl) {
         log.error('eleve-http: ELEVE_OUTBOUND_URL not set — cannot deliver');
         throw new Error('ELEVE_OUTBOUND_URL not configured');

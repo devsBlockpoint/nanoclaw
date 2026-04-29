@@ -40,14 +40,10 @@ export async function resolveSystemPrompt(opts: ResolveOptions): Promise<string>
       } catch (err) {
         try {
           const cached = await readFile(opts.cachePath, 'utf8');
-          log.warn(
-            `[system-prompt-loader] fetch failed (${(err as Error).message}); using cache`,
-          );
+          log.warn(`[system-prompt-loader] fetch failed (${(err as Error).message}); using cache`);
           return cached;
         } catch {
-          throw new Error(
-            `[system-prompt-loader] fetch failed and no cache available: ${(err as Error).message}`,
-          );
+          throw new Error(`[system-prompt-loader] fetch failed and no cache available: ${(err as Error).message}`);
         }
       }
     }

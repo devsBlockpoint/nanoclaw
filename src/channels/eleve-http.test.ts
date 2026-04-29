@@ -140,9 +140,7 @@ describe('eleve-http adapter', () => {
     });
     await adapter.setup(setup);
 
-    await expect(
-      adapter.deliver('conv-42', null, { kind: 'chat', content: { text: 'hi' } }),
-    ).rejects.toThrow();
+    await expect(adapter.deliver('conv-42', null, { kind: 'chat', content: { text: 'hi' } })).rejects.toThrow();
   });
 
   test('returns 404 for unknown paths', async () => {
@@ -178,7 +176,9 @@ describe('eleve-http adapter', () => {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function makeFakeSetup(): ChannelSetup & { onInboundCalls: Array<{ platformId: string; threadId: string | null; message: unknown }> } {
+function makeFakeSetup(): ChannelSetup & {
+  onInboundCalls: Array<{ platformId: string; threadId: string | null; message: unknown }>;
+} {
   const onInboundCalls: Array<{ platformId: string; threadId: string | null; message: unknown }> = [];
   return {
     onInboundCalls,
@@ -188,5 +188,7 @@ function makeFakeSetup(): ChannelSetup & { onInboundCalls: Array<{ platformId: s
     onInboundEvent(): void {},
     onMetadata(): void {},
     onAction(): void {},
-  } as unknown as ChannelSetup & { onInboundCalls: Array<{ platformId: string; threadId: string | null; message: unknown }> };
+  } as unknown as ChannelSetup & {
+    onInboundCalls: Array<{ platformId: string; threadId: string | null; message: unknown }>;
+  };
 }
