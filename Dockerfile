@@ -46,8 +46,8 @@ FROM node:20-alpine AS runtime
 WORKDIR /app
 
 # docker-cli to talk to the mounted host daemon, plus tini for proper signal
-# handling, plus wget for the healthcheck.
-RUN apk add --no-cache docker-cli tini wget
+# handling, plus curl for healthcheck (more reliable than busybox wget).
+RUN apk add --no-cache docker-cli tini curl
 
 RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 
@@ -65,8 +65,8 @@ EXPOSE 3001
 ENV NODE_ENV=production
 ENV NANOCLAW_PORT=3001
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD wget --spider -q http://localhost:3001/health || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD curl -fsS "http://localhost:${NANOCLAW_PORT:-3001}/health" >/dev/null || exit 1
 
 ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["node", "dist/index.js"]
