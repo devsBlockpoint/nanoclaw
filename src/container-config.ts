@@ -14,14 +14,28 @@ import path from 'path';
 
 import { GROUPS_DIR } from './config.js';
 
-export interface McpServerConfig {
-  command: string;
-  args?: string[];
-  env?: Record<string, string>;
-  // Optional always-in-context guidance. When set, the host writes the
-  // content to `.claude-fragments/mcp-<name>.md` at spawn and imports it
-  // into the composed CLAUDE.md.
-  instructions?: string;
+export type McpServerConfig =
+  | {
+      command: string;
+      args?: string[];
+      env?: Record<string, string>;
+      // Optional always-in-context guidance. When set, the host writes the
+      // content to `.claude-fragments/mcp-<name>.md` at spawn and imports it
+      // into the composed CLAUDE.md.
+      instructions?: string;
+    }
+  | {
+      type: 'sse' | 'http';
+      url: string;
+      headers?: Record<string, string>;
+      // Optional always-in-context guidance — same semantics as stdio variant.
+      instructions?: string;
+    };
+
+export function isHttpMcpServer(
+  cfg: McpServerConfig,
+): cfg is { type: 'sse' | 'http'; url: string; headers?: Record<string, string>; instructions?: string } {
+  return 'url' in cfg && (cfg.type === 'sse' || cfg.type === 'http');
 }
 
 export interface AdditionalMountConfig {

@@ -9,13 +9,29 @@ import fs from 'fs';
 
 const CONFIG_PATH = '/workspace/agent/container.json';
 
+export interface StdioMcpServer {
+  command: string;
+  args?: string[];
+  env?: Record<string, string>;
+}
+
+export interface HttpMcpServer {
+  type: 'sse' | 'http';
+  url: string;
+  headers?: Record<string, string>;
+}
+
+export function isHttpMcpServer(cfg: StdioMcpServer | HttpMcpServer): cfg is HttpMcpServer {
+  return 'url' in cfg && (cfg.type === 'sse' || cfg.type === 'http');
+}
+
 export interface RunnerConfig {
   provider: string;
   assistantName: string;
   groupName: string;
   agentGroupId: string;
   maxMessagesPerPrompt: number;
-  mcpServers: Record<string, { command: string; args: string[]; env: Record<string, string> }>;
+  mcpServers: Record<string, StdioMcpServer | HttpMcpServer>;
 }
 
 const DEFAULT_MAX_MESSAGES = 10;
