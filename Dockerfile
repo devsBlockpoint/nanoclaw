@@ -41,15 +41,27 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 RUN pnpm install --frozen-lockfile --prod --ignore-scripts \
   && pnpm rebuild better-sqlite3
 
-# ---------- Stage 4: runtime ------------------------------------------------
-FROM node:20-alpine AS runtime
+# ---------- Stage 4: runtime (DinD — Docker daemon inside the container) ----
+# Base = docker:24-dind which provides dockerd + docker CLI + an alpine OS.
+# We install Node 20 + pnpm + tsx on top.
+#
+# This image runs an internal Docker daemon (via dind-entrypoint.sh) so that
+# bind mounts the nanoclaw host process performs (workspace/, group folders,
+# session DBs in /app/data) all reference paths INSIDE this container — they
+# work because dockerd lives in the same filesystem namespace.
+#
+# Requires the container to be started with --privileged. On Easypanel, set
+# the service to "Privileged" mode in the deployment options.
+FROM docker:24-dind AS runtime
 WORKDIR /app
 
-# docker-cli to talk to the mounted host daemon, plus tini for proper signal
-# handling, plus curl for healthcheck (more reliable than busybox wget).
-RUN apk add --no-cache docker-cli tini curl
+# Node 20 + tini + curl. docker:24-dind already brings docker CLI + dockerd.
+RUN apk add --no-cache nodejs npm tini curl
 
-RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
+# pnpm + tsx (needed for running scripts/*.ts inside the container).
+# docker:24-dind's apk-installed nodejs doesn't ship corepack, so we install
+# pnpm via npm directly.
+RUN npm install -g pnpm@10.33.0 tsx@4.19.0
 
 COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
@@ -59,14 +71,19 @@ COPY groups/monica ./groups/monica
 COPY src ./src
 COPY tsconfig.json ./
 
+# DinD entrypoint that starts dockerd, waits, optionally pre-pulls, then execs CMD
+RUN chmod +x /app/scripts/dind-entrypoint.sh
+
 VOLUME ["/app/data"]
 EXPOSE 3001
 
 ENV NODE_ENV=production
 ENV NANOCLAW_PORT=3001
+# Tells container-runner to skip dev-time bind mounts of /app/src and /app/skills
+ENV NANOCLAW_AGENT_SRC_BAKED=true
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
   CMD curl -fsS "http://localhost:${NANOCLAW_PORT:-3001}/health" >/dev/null || exit 1
 
-ENTRYPOINT ["/sbin/tini", "--"]
+ENTRYPOINT ["/sbin/tini", "--", "/app/scripts/dind-entrypoint.sh"]
 CMD ["node", "dist/index.js"]
