@@ -54,7 +54,7 @@ const TOOL_ALLOWLIST = [
   'ToolSearch',
   'Skill',
   'NotebookEdit',
-  'mcp__nanoclaw__*',
+  'mcp__*',
 ];
 
 interface SDKUserMessage {
@@ -276,8 +276,6 @@ export class ClaudeProvider implements AgentProvider {
         allowedTools: TOOL_ALLOWLIST,
         disallowedTools: SDK_DISALLOWED_TOOLS,
         env: this.env,
-        permissionMode: 'bypassPermissions',
-        allowDangerouslySkipPermissions: true,
         settingSources: ['project', 'user'],
         mcpServers: this.mcpServers,
         hooks: {
