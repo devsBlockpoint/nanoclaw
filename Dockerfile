@@ -55,8 +55,9 @@ RUN pnpm install --frozen-lockfile --prod --ignore-scripts \
 FROM docker:24-dind AS runtime
 WORKDIR /app
 
-# Node 20 + tini + curl. docker:24-dind already brings docker CLI + dockerd.
-RUN apk add --no-cache nodejs npm tini curl
+# Node 20 + tini + curl + sqlite (sqlite for ops/debugging — central + session DBs).
+# docker:24-dind already brings docker CLI + dockerd.
+RUN apk add --no-cache nodejs npm tini curl sqlite
 
 # pnpm + tsx (needed for running scripts/*.ts inside the container).
 # docker:24-dind's apk-installed nodejs doesn't ship corepack, so we install

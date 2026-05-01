@@ -5,12 +5,28 @@
  * shared between host and container. Callers own the connection lifecycle
  * (open-write-close per op). See session-manager.ts header for invariants.
  */
+import { dirname } from 'node:path';
+import { mkdirSync } from 'node:fs';
+
 import Database from 'better-sqlite3';
 
 import { INBOUND_SCHEMA, OUTBOUND_SCHEMA } from './schema.js';
 
+/**
+ * Defense-in-depth: ensure the parent directory exists before opening a session
+ * DB. Normally session dirs are created by container-runner before any DB op,
+ * but if the data dir was wiped (manual cleanup, restore from backup, etc.) and
+ * a stale session row remains in the central DB, opening would otherwise fail
+ * with a confusing "directory does not exist" TypeError. Auto-mkdir lets the
+ * schema apply cleanly and the session resumes/initializes.
+ */
+function ensureParentDir(dbPath: string): void {
+  mkdirSync(dirname(dbPath), { recursive: true });
+}
+
 /** Apply the inbound or outbound schema to a DB file. Idempotent. */
 export function ensureSchema(dbPath: string, schema: 'inbound' | 'outbound'): void {
+  ensureParentDir(dbPath);
   const db = new Database(dbPath);
   db.pragma('journal_mode = DELETE');
   db.exec(schema === 'inbound' ? INBOUND_SCHEMA : OUTBOUND_SCHEMA);
@@ -19,6 +35,7 @@ export function ensureSchema(dbPath: string, schema: 'inbound' | 'outbound'): vo
 
 /** Open the inbound DB for a session (host reads/writes). */
 export function openInboundDb(dbPath: string): Database.Database {
+  ensureParentDir(dbPath);
   const db = new Database(dbPath);
   db.pragma('journal_mode = DELETE');
   db.pragma('busy_timeout = 5000');
@@ -27,6 +44,7 @@ export function openInboundDb(dbPath: string): Database.Database {
 
 /** Open the outbound DB for a session (host reads only). */
 export function openOutboundDb(dbPath: string): Database.Database {
+  ensureParentDir(dbPath);
   const db = new Database(dbPath, { readonly: true });
   db.pragma('busy_timeout = 5000');
   return db;

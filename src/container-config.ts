@@ -61,6 +61,14 @@ export interface ContainerConfig {
   agentGroupId?: string;
   /** Max messages per prompt. Falls back to code default if unset. */
   maxMessagesPerPrompt?: number;
+  /**
+   * Controls what `composeGroupClaudeMd` writes to `groups/<folder>/CLAUDE.md`:
+   *   - 'shared' (default): NanoClaw shared base + skill/MCP fragments imported.
+   *   - 'slim': minimal entry; only `CLAUDE.local.md` reaches the model. Use for
+   *     groups whose system prompt is fully self-contained (e.g. customer-facing
+   *     personas where the NanoClaw agent context would leak internals).
+   */
+  claudeMdMode?: 'shared' | 'slim';
 }
 
 function emptyConfig(): ContainerConfig {
@@ -101,6 +109,7 @@ export function readContainerConfig(folder: string): ContainerConfig {
       assistantName: raw.assistantName,
       agentGroupId: raw.agentGroupId,
       maxMessagesPerPrompt: raw.maxMessagesPerPrompt,
+      claudeMdMode: raw.claudeMdMode === 'slim' ? 'slim' : raw.claudeMdMode,
     };
   } catch (err) {
     console.error(`[container-config] failed to parse ${p}: ${String(err)}`);

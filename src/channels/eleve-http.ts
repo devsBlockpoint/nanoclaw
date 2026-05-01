@@ -187,7 +187,14 @@ export function createEleveHttpAdapter(config: EleveHttpConfig): ChannelAdapter 
     const messageText = typeof payload.message === 'string' ? payload.message : null;
 
     if (!conversationId || !messageText) {
-      log.warn('eleve-http: missing conversation_id or message in inbound payload');
+      log.warn('eleve-http: missing conversation_id or message in inbound payload', {
+        rawBodyPreview: rawBody.slice(0, 500),
+        hasConversationId: typeof payload.conversation_id !== 'undefined',
+        conversationIdType: typeof payload.conversation_id,
+        hasMessage: typeof payload.message !== 'undefined',
+        messageType: typeof payload.message,
+        topLevelKeys: Object.keys(payload),
+      });
       return;
     }
 

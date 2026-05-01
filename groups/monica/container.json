@@ -15,5 +15,6 @@
   "groupName": "Mónica",
   "assistantName": "Mónica",
   "agentGroupId": "ag-1777474767725-ki4miv",
-  "maxMessagesPerPrompt": 10
+  "maxMessagesPerPrompt": 10,
+  "claudeMdMode": "slim"
 }

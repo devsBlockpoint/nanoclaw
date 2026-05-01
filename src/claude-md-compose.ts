@@ -45,6 +45,28 @@ export function composeGroupClaudeMd(group: AgentGroup): void {
     fs.mkdirSync(groupDir, { recursive: true });
   }
 
+  const config = readContainerConfig(group.folder);
+
+  // Slim mode: customer-facing personas whose system prompt is self-contained.
+  // Skip the NanoClaw shared base + fragments — only CLAUDE.local.md reaches
+  // the model. Prevents identity drift ("You are a NanoClaw agent") and
+  // leakage of internals (workspace paths, fragment names).
+  if (config.claudeMdMode === 'slim') {
+    // Remove the shared symlink and any prior fragments.
+    const sharedLink = path.join(groupDir, '.claude-shared.md');
+    try { fs.unlinkSync(sharedLink); } catch { /* missing */ }
+    const fragmentsDir = path.join(groupDir, '.claude-fragments');
+    if (fs.existsSync(fragmentsDir)) {
+      for (const f of fs.readdirSync(fragmentsDir)) fs.unlinkSync(path.join(fragmentsDir, f));
+    }
+    // Slim entry: just import the per-group memory. Nothing else.
+    const body = [COMPOSED_HEADER, '@./CLAUDE.local.md', ''].join('\n');
+    writeAtomic(path.join(groupDir, 'CLAUDE.md'), body);
+    const localFile = path.join(groupDir, 'CLAUDE.local.md');
+    if (!fs.existsSync(localFile)) fs.writeFileSync(localFile, '');
+    return;
+  }
+
   const sharedLink = path.join(groupDir, '.claude-shared.md');
   syncSymlink(sharedLink, SHARED_CLAUDE_MD_CONTAINER_PATH);
 
@@ -54,7 +76,6 @@ export function composeGroupClaudeMd(group: AgentGroup): void {
   }
 
   // Desired fragment set.
-  const config = readContainerConfig(group.folder);
   const desired = new Map<string, { type: 'symlink' | 'inline'; content: string }>();
 
   // Skill fragments — every skill that ships an `instructions.md`.

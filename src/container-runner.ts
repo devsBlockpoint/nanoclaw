@@ -241,7 +241,32 @@ function buildMounts(
   initGroupFilesystem(agentGroup);
 
   // Sync skill symlinks based on container.json selection before mounting.
-  const claudeDir = path.join(DATA_DIR, 'v2-sessions', agentGroup.id, '.claude-shared');
+  // Claude Code state (credentials, settings, sessions, skills) is GLOBAL —
+  // shared across all agent groups so a single `claude login` serves the
+  // whole nanoclaw host. Per-agent-group isolation of Claude state was the
+  // previous design but added login overhead with no real benefit when all
+  // groups belong to the same operator.
+  // Migration: if a per-group .claude-shared exists with credentials and the
+  // global path is empty, hoist them up to global on first spawn.
+  const claudeDir = path.join(DATA_DIR, '.claude-shared-global');
+  if (!fs.existsSync(claudeDir)) {
+    fs.mkdirSync(claudeDir, { recursive: true });
+    const legacyDir = path.join(DATA_DIR, 'v2-sessions', agentGroup.id, '.claude-shared');
+    const legacyCreds = path.join(legacyDir, '.credentials.json');
+    if (fs.existsSync(legacyCreds)) {
+      log.info('[claude-shared] migrating legacy per-group credentials to global', { from: legacyDir, to: claudeDir });
+      // Copy entire .claude-shared content (preserves credentials, settings, skills, sessions)
+      for (const entry of fs.readdirSync(legacyDir, { withFileTypes: true })) {
+        const src = path.join(legacyDir, entry.name);
+        const dst = path.join(claudeDir, entry.name);
+        try {
+          fs.cpSync(src, dst, { recursive: true });
+        } catch (err) {
+          log.warn('[claude-shared] failed to migrate entry', { entry: entry.name, err });
+        }
+      }
+    }
+  }
   syncSkillSymlinks(claudeDir, containerConfig);
 
   // Compose CLAUDE.md fresh every spawn from the shared base, enabled skill
@@ -294,8 +319,8 @@ function buildMounts(
     mounts.push({ hostPath: sharedClaudeMd, containerPath: '/app/CLAUDE.md', readonly: true });
   }
 
-  // Per-group .claude-shared at /home/node/.claude (Claude state, settings,
-  // skill symlinks)
+  // Global .claude-shared at /home/node/.claude (credentials, settings,
+  // sessions, skill symlinks). Single login serves all agent groups.
   mounts.push({ hostPath: claudeDir, containerPath: '/home/node/.claude', readonly: false });
 
   // Shared agent-runner source — read-only, same code for all groups.

@@ -272,7 +272,14 @@ export class ClaudeProvider implements AgentProvider {
         additionalDirectories: this.additionalDirectories,
         resume: input.continuation,
         pathToClaudeCodeExecutable: '/pnpm/claude',
-        systemPrompt: instructions ? { type: 'preset' as const, preset: 'claude_code' as const, append: instructions } : undefined,
+        // Custom string systemPrompt (no `claude_code` preset). The preset
+        // injects coding-agent instructions that contradict customer-facing
+        // personas like Mónica. The persona/identity comes from the auto-loaded
+        // CLAUDE.md / CLAUDE.local.md (see claude-md-compose.ts). What we pass
+        // here is only the host's per-session runtime context (channel, destinations,
+        // etc.). Empty string when no instructions to avoid the SDK falling
+        // back to the preset default.
+        systemPrompt: instructions ?? '',
         allowedTools: TOOL_ALLOWLIST,
         disallowedTools: SDK_DISALLOWED_TOOLS,
         env: this.env,
